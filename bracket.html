@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 FIFA World Cup Dashboard – Bracket</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><span class="trophy">🏆</span> 2026 FIFA World Cup Dashboard</h1>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="groups.html">Groups</a></li>
+                    <li><a href="schedule.html">Schedule</a></li>
+                    <li><a href="teams.html">Teams</a></li>
+                    <li><a href="bracket.html" class="active">Bracket</a></li>
+                    <li><a href="about.html">About</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section>
+            <h2>🏆 Knockout Stage Bracket</h2>
+            <p class="subtitle">
+                The knockout stage begins July 1, 2026. The top 2 from each group plus the
+                8 best 3rd-place teams advance to the Round of 32.
+            </p>
+
+            <div class="bracket-info">
+                <h3>⏳ Group Stage in Progress</h3>
+                <p>
+                    The group stage runs from June 11–28, 2026. Once complete, the 32 qualified teams will
+                    be seeded into the knockout bracket. Check back after June 28 for confirmed match-ups!
+                </p>
+            </div>
+
+            <div class="bracket-info" style="background:#e8f4ff;border-color:#003f87;margin-top:1rem;">
+                <h3 style="color:#003f87;">📋 Knockout Stage Format</h3>
+                <p>
+                    <strong>Round of 32 (July 1–6):</strong> 16 matches — 32 qualified teams<br>
+                    <strong>Round of 16 (July 8–11):</strong> 8 matches<br>
+                    <strong>Quarter-Finals (July 13–14):</strong> 4 matches<br>
+                    <strong>Semi-Finals (July 16–17):</strong> 2 matches<br>
+                    <strong>3rd Place (July 18):</strong> Hard Rock Stadium, Miami<br>
+                    <strong>🏆 Final (July 19):</strong> MetLife Stadium, New York/New Jersey
+                </p>
+            </div>
+
+            <div id="bracket-container">
+                <p class="loading">Loading bracket...</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>⚽ 2026 FIFA World Cup Dashboard</p>
+            <p>Data sourced from publicly available FIFA information. Not affiliated with FIFA.</p>
+        </div>
+    </footer>
+
+    <button id="scroll-to-top" class="scroll-to-top" aria-label="Scroll to top" title="Scroll to top">↑</button>
+
+    <script src="app.js"></script>
+</body>
+</html>

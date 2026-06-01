@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 FIFA World Cup Dashboard – Stats</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><span class="trophy">🏆</span> 2026 FIFA World Cup Dashboard</h1>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="groups.html">Groups</a></li>
+                    <li><a href="schedule.html">Schedule</a></li>
+                    <li><a href="teams.html">Teams</a></li>
+                    <li><a href="bracket.html">Bracket</a></li>
+                    <li><a href="stats.html" class="active">Stats</a></li>
+                    <li><a href="about.html">About</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- Golden Boot -->
+        <section>
+            <h2>👟 Golden Boot — Top Scorers</h2>
+            <p class="subtitle">Tournament leading scorers. Click any column header to sort.</p>
+            <div id="golden-boot-container">
+                <p class="loading">Loading...</p>
+            </div>
+            <div style="margin-top:1rem;padding:0.75rem 1rem;background:#f8f9fa;border-radius:4px;font-size:0.85rem;color:#555;">
+                <strong>Note:</strong> Own goals are not credited to the scorer and do not count toward the Golden Boot.
+                <strong>Pen.</strong> = penalty goals (subset of total goals).
+            </div>
+        </section>
+
+        <!-- Discipline -->
+        <section>
+            <h2>🟨 Discipline — Card Leaders</h2>
+            <p class="subtitle">Players with yellow or red cards. Click any column header to sort.</p>
+            <div id="discipline-container">
+                <p class="loading">Loading...</p>
+            </div>
+            <div style="margin-top:1rem;padding:0.75rem 1rem;background:#f8f9fa;border-radius:4px;font-size:0.85rem;color:#555;">
+                Two yellow cards in the same match count as one red card entry. Direct reds are listed separately.
+            </div>
+        </section>
+
+        <!-- Team Stats -->
+        <section>
+            <h2>📊 Team Stats</h2>
+            <p class="subtitle">
+                All 48 teams sorted by points. Click any column header to sort.
+            </p>
+            <div id="team-stats-container">
+                <p class="loading">Loading...</p>
+            </div>
+            <div style="margin-top:1rem;padding:0.75rem 1rem;background:#f8f9fa;border-radius:4px;font-size:0.85rem;color:#555;">
+                <strong>Legend:</strong>
+                GP = Games Played · W = Won · D = Drawn · L = Lost ·
+                GF = Goals For · GA = Goals Against · GD = Goal Difference · Pts = Points ·
+                CS = Clean Sheets · 🟨 = Yellow Cards · 🟥 = Red Cards
+            </div>
+        </section>
+
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>⚽ 2026 FIFA World Cup Dashboard</p>
+            <p>Data sourced from publicly available FIFA information. Not affiliated with FIFA.</p>
+        </div>
+    </footer>
+
+    <button id="scroll-to-top" class="scroll-to-top" aria-label="Scroll to top" title="Scroll to top">↑</button>
+
+    <script src="app.js"></script>
+</body>
+</html>

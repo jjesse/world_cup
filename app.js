@@ -757,7 +757,7 @@ function makeSortableTable(containerId, data, columns, defaultSortKey, defaultDi
                     dir = dir === 'asc' ? 'desc' : 'asc';
                 } else {
                     sortKey = newKey;
-                    dir = (data.length > 0 && typeof data[0][newKey] === 'string') ? 'asc' : 'desc';
+                    dir = (data.length > 0 && data[0][newKey] != null && typeof data[0][newKey] === 'string') ? 'asc' : 'desc';
                 }
                 render();
             });
@@ -780,8 +780,8 @@ function renderStats() {
     if (goldenBootEl) {
         const scorers = playerStats
             .filter(p => p.goals > 0)
-            .sort((a, b) => b.goals - a.goals || b.penalties - a.penalties || a.player.localeCompare(b.player));
-        scorers.forEach((p, i) => { p.rank = i + 1; });
+            .sort((a, b) => b.goals - a.goals || b.penalties - a.penalties || a.player.localeCompare(b.player))
+            .map((p, i) => ({ ...p, rank: i + 1 }));
 
         if (scorers.length === 0) {
             goldenBootEl.innerHTML = '<p class="no-data">No goals scored yet. Check back after matches are played.</p>';
@@ -890,7 +890,7 @@ function renderStats() {
                 <td>${team.lost}</td>
                 <td>${team.gf}</td>
                 <td>${team.ga}</td>
-                <td>${team.gd >= 0 ? '+' : ''}${team.gd}</td>
+                <td>${team.gd > 0 ? '+' : ''}${team.gd}</td>
                 <td><strong>${team.pts}</strong></td>
                 <td>${team.cleanSheets}</td>
                 <td>${team.yellowCards}</td>

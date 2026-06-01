@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 FIFA World Cup Dashboard – Schedule</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><span class="trophy">🏆</span> 2026 FIFA World Cup Dashboard</h1>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="groups.html">Groups</a></li>
+                    <li><a href="schedule.html" class="active">Schedule</a></li>
+                    <li><a href="teams.html">Teams</a></li>
+                    <li><a href="bracket.html">Bracket</a></li>
+                    <li><a href="about.html">About</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section>
+            <h2>📅 Group Stage Schedule</h2>
+            <p class="subtitle">All 72 group stage matches — June 11 to June 28, 2026. All times Eastern Time (ET).</p>
+
+            <!-- Filter Controls -->
+            <div class="filter-controls">
+                <div>
+                    <label for="group-filter">Filter by Group:</label>
+                    <select id="group-filter" aria-label="Filter by group">
+                        <option value="">All Groups</option>
+                        <option value="A">Group A</option>
+                        <option value="B">Group B</option>
+                        <option value="C">Group C</option>
+                        <option value="D">Group D</option>
+                        <option value="E">Group E</option>
+                        <option value="F">Group F</option>
+                        <option value="G">Group G</option>
+                        <option value="H">Group H</option>
+                        <option value="I">Group I</option>
+                        <option value="J">Group J</option>
+                        <option value="K">Group K</option>
+                        <option value="L">Group L</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="team-filter">Filter by Team:</label>
+                    <select id="team-filter" aria-label="Filter by team">
+                        <option value="">All Teams</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="search-input">Search:</label>
+                    <input type="text" id="search-input" placeholder="Team, city, venue…" aria-label="Search schedule" />
+                </div>
+            </div>
+
+            <div id="schedule-container">
+                <p class="loading">Loading schedule...</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>⚽ 2026 FIFA World Cup Dashboard</p>
+            <p>Data sourced from publicly available FIFA information. Not affiliated with FIFA.</p>
+        </div>
+    </footer>
+
+    <button id="scroll-to-top" class="scroll-to-top" aria-label="Scroll to top" title="Scroll to top">↑</button>
+
+    <script src="app.js"></script>
+</body>
+</html>

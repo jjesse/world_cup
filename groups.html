@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 FIFA World Cup Dashboard – Groups</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><span class="trophy">🏆</span> 2026 FIFA World Cup Dashboard</h1>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="groups.html" class="active">Groups</a></li>
+                    <li><a href="schedule.html">Schedule</a></li>
+                    <li><a href="teams.html">Teams</a></li>
+                    <li><a href="bracket.html">Bracket</a></li>
+                    <li><a href="about.html">About</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section>
+            <h2>⚽ Group Stage Standings</h2>
+            <p class="subtitle">
+                All 48 teams compete in 12 groups (A–L) of 4 teams. The top 2 from each group plus the
+                8 best 3rd-place teams advance to the Round of 32. Matches run June 11–28, 2026.
+            </p>
+
+            <div style="padding:0.75rem 1rem;background:#e8f5e9;border-left:4px solid #00a651;border-radius:4px;margin-bottom:1.5rem;font-size:0.95rem;">
+                ℹ️ The tournament has not yet started. Standings will update as matches are played starting <strong>June 11, 2026</strong>.
+                <span style="background:#d4a017;color:#1a1a1a;padding:0.1rem 0.35rem;border-radius:3px;font-weight:700;font-size:0.75rem;margin-left:0.5rem;">HOST</span>
+                = Host nation.
+            </div>
+
+            <div id="groups-container">
+                <p class="loading">Loading groups...</p>
+            </div>
+
+            <div style="margin-top:2rem;padding:1rem;background:#f8f9fa;border-radius:4px;font-size:0.85rem;color:#555;">
+                <strong>Legend:</strong>
+                P = Played · W = Won · D = Drawn · L = Lost · GF = Goals For · GA = Goals Against · GD = Goal Difference · Pts = Points<br>
+                <strong>Qualification:</strong> Top 2 in each group + 8 best 3rd-place teams advance to Round of 32.
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>⚽ 2026 FIFA World Cup Dashboard</p>
+            <p>Data sourced from publicly available FIFA information. Not affiliated with FIFA.</p>
+        </div>
+    </footer>
+
+    <button id="scroll-to-top" class="scroll-to-top" aria-label="Scroll to top" title="Scroll to top">↑</button>
+
+    <script src="app.js"></script>
+</body>
+</html>

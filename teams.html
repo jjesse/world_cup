@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 FIFA World Cup Dashboard – Teams</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><span class="trophy">🏆</span> 2026 FIFA World Cup Dashboard</h1>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="groups.html">Groups</a></li>
+                    <li><a href="schedule.html">Schedule</a></li>
+                    <li><a href="teams.html" class="active">Teams</a></li>
+                    <li><a href="bracket.html">Bracket</a></li>
+                    <li><a href="about.html">About</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section>
+            <h2>🌍 Participating Nations</h2>
+            <p class="subtitle">
+                All 48 nations competing at the 2026 FIFA World Cup, organized by confederation.
+                <span style="background:#d4a017;color:#1a1a1a;padding:0.1rem 0.35rem;border-radius:3px;font-weight:700;font-size:0.75rem;margin-left:0.25rem;">HOST</span>
+                nations shown with a gold border.
+            </p>
+
+            <div id="teams-container">
+                <p class="loading">Loading teams...</p>
+            </div>
+
+            <div style="margin-top:2rem;padding:1rem;background:#f8f9fa;border-radius:4px;font-size:0.85rem;color:#555;">
+                <strong>Confederation Breakdown:</strong>
+                UEFA (Europe) · CONMEBOL (South America) · CONCACAF (N. & C. America) ·
+                CAF (Africa) · AFC (Asia) · OFC (Oceania)
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>⚽ 2026 FIFA World Cup Dashboard</p>
+            <p>Data sourced from publicly available FIFA information. Not affiliated with FIFA.</p>
+        </div>
+    </footer>
+
+    <button id="scroll-to-top" class="scroll-to-top" aria-label="Scroll to top" title="Scroll to top">↑</button>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -803,6 +803,51 @@ footer p {
 }
 
 /* ==========================================
+   Stats Page — Sortable Tables
+   ========================================== */
+.sortable-col {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+}
+
+.sortable-col:hover {
+    background-color: var(--hover-color);
+}
+
+.sortable-col.sort-active {
+    background-color: var(--secondary-color);
+    color: var(--text-dark);
+}
+
+.sort-arrow {
+    font-size: 0.7rem;
+    margin-left: 0.25rem;
+    opacity: 0.6;
+}
+
+.sortable-col.sort-active .sort-arrow {
+    opacity: 1;
+}
+
+.rank-cell {
+    font-weight: 700;
+    text-align: center !important;
+    min-width: 2.5rem;
+}
+
+.no-data {
+    text-align: center;
+    color: #888;
+    font-style: italic;
+    padding: 2rem 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin: 0;
+}
+
+/* ==========================================
    Responsive Design
    ========================================== */
 @media (max-width: 768px) {

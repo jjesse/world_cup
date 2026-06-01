@@ -474,7 +474,7 @@ function renderSchedule(filter = '') {
             const homeFlag = getFlag(m.home);
             const awayFlag = getFlag(m.away);
             const scoreDisplay = m.score
-                ? `<span class="match-score">${m.score}</span>`
+                ? `<span class="match-score">${m.score.home} – ${m.score.away}</span>`
                 : `<span class="match-score upcoming">vs</span>`;
             html += `
                 <div class="match-item">
@@ -644,6 +644,263 @@ function renderBracket() {
 }
 
 // ==========================================
+// Stats Page
+// ==========================================
+
+/**
+ * Derives per-player stats (goals, penalties, own goals, yellow/red cards)
+ * by aggregating events from all completed SCHEDULE entries.
+ *
+ * To record a completed match, add these fields to its SCHEDULE entry:
+ *   score: { home: 2, away: 1 }
+ *   scorers: [{ player: 'Name', team: 'Team', minute: 45, type: 'goal' }]
+ *             type values: 'goal' | 'penalty' | 'own goal'
+ *   yellowCards: [{ player: 'Name', team: 'Team', minute: 33 }]
+ *   redCards:    [{ player: 'Name', team: 'Team', minute: 78 }]
+ */
+function computePlayerStats() {
+    const players = {};
+    for (const match of SCHEDULE) {
+        for (const s of (match.scorers || [])) {
+            const key = `${s.player}||${s.team}`;
+            if (!players[key]) {
+                players[key] = { player: s.player, team: s.team, goals: 0, penalties: 0, ownGoals: 0, yellowCards: 0, redCards: 0 };
+            }
+            if (s.type === 'own goal') {
+                players[key].ownGoals++;
+            } else {
+                players[key].goals++;
+                if (s.type === 'penalty') players[key].penalties++;
+            }
+        }
+        for (const c of (match.yellowCards || [])) {
+            const key = `${c.player}||${c.team}`;
+            if (!players[key]) {
+                players[key] = { player: c.player, team: c.team, goals: 0, penalties: 0, ownGoals: 0, yellowCards: 0, redCards: 0 };
+            }
+            players[key].yellowCards++;
+        }
+        for (const c of (match.redCards || [])) {
+            const key = `${c.player}||${c.team}`;
+            if (!players[key]) {
+                players[key] = { player: c.player, team: c.team, goals: 0, penalties: 0, ownGoals: 0, yellowCards: 0, redCards: 0 };
+            }
+            players[key].redCards++;
+        }
+    }
+    return Object.values(players);
+}
+
+/**
+ * Derives per-team match stats (clean sheets, yellow/red card totals)
+ * from completed SCHEDULE entries.
+ */
+function computeTeamMatchStats() {
+    const teams = {};
+    for (const match of SCHEDULE) {
+        if (!match.score || typeof match.score !== 'object') continue;
+        for (const t of [match.home, match.away]) {
+            if (!teams[t]) teams[t] = { cleanSheets: 0, yellowCards: 0, redCards: 0 };
+        }
+        if (match.score.away === 0) teams[match.home].cleanSheets++;
+        if (match.score.home === 0) teams[match.away].cleanSheets++;
+        for (const c of (match.yellowCards || [])) {
+            if (!teams[c.team]) teams[c.team] = { cleanSheets: 0, yellowCards: 0, redCards: 0 };
+            teams[c.team].yellowCards++;
+        }
+        for (const c of (match.redCards || [])) {
+            if (!teams[c.team]) teams[c.team] = { cleanSheets: 0, yellowCards: 0, redCards: 0 };
+            teams[c.team].redCards++;
+        }
+    }
+    return teams;
+}
+
+/**
+ * Renders a sortable table into the element with the given containerId.
+ * Clicking a column header re-sorts the table by that column.
+ */
+function makeSortableTable(containerId, data, columns, defaultSortKey, defaultDir, rowRenderer) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let sortKey = defaultSortKey;
+    let dir = defaultDir;
+
+    function render() {
+        const sorted = [...data].sort((a, b) => {
+            const va = a[sortKey];
+            const vb = b[sortKey];
+            if (typeof va === 'string') {
+                return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+            }
+            return dir === 'asc' ? va - vb : vb - va;
+        });
+
+        const headers = columns.map(col => {
+            const isActive = col.key === sortKey;
+            const arrow = isActive ? (dir === 'asc' ? '▲' : '▼') : '⇅';
+            return `<th data-sort="${col.key}" class="sortable-col${isActive ? ' sort-active' : ''}">${col.label} <span class="sort-arrow">${arrow}</span></th>`;
+        }).join('');
+
+        const rows = sorted.map((row, i) => rowRenderer(row, i, sorted)).join('');
+
+        container.innerHTML = `<div class="table-container"><table>
+            <thead><tr>${headers}</tr></thead>
+            <tbody>${rows}</tbody>
+        </table></div>`;
+
+        container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const newKey = th.dataset.sort;
+                if (newKey === sortKey) {
+                    dir = dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortKey = newKey;
+                    dir = (data.length > 0 && data[0][newKey] != null && typeof data[0][newKey] === 'string') ? 'asc' : 'desc';
+                }
+                render();
+            });
+        });
+    }
+
+    render();
+}
+
+function renderStats() {
+    const goldenBootEl = document.getElementById('golden-boot-container');
+    const disciplineEl = document.getElementById('discipline-container');
+    const teamStatsEl = document.getElementById('team-stats-container');
+    if (!goldenBootEl && !disciplineEl && !teamStatsEl) return;
+
+    const playerStats = computePlayerStats();
+    const matchStats = computeTeamMatchStats();
+
+    // --- Golden Boot ---
+    if (goldenBootEl) {
+        const scorers = playerStats
+            .filter(p => p.goals > 0)
+            .sort((a, b) => b.goals - a.goals || b.penalties - a.penalties || a.player.localeCompare(b.player))
+            .map((p, i) => ({ ...p, rank: i + 1 }));
+
+        if (scorers.length === 0) {
+            goldenBootEl.innerHTML = '<p class="no-data">No goals scored yet. Check back after matches are played.</p>';
+        } else {
+            makeSortableTable(
+                'golden-boot-container',
+                scorers,
+                [
+                    { key: 'rank', label: '#' },
+                    { key: 'player', label: 'Player' },
+                    { key: 'team', label: 'Team' },
+                    { key: 'goals', label: 'Goals' },
+                    { key: 'penalties', label: 'Pen.' },
+                ],
+                'goals',
+                'desc',
+                (p) => {
+                    const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : p.rank;
+                    return `<tr>
+                        <td class="rank-cell">${medal}</td>
+                        <td>${p.player}</td>
+                        <td>${getFlag(p.team)} ${p.team}</td>
+                        <td>${p.goals}</td>
+                        <td>${p.penalties > 0 ? p.penalties : '—'}</td>
+                    </tr>`;
+                }
+            );
+        }
+    }
+
+    // --- Discipline ---
+    if (disciplineEl) {
+        const carded = playerStats
+            .filter(p => p.yellowCards > 0 || p.redCards > 0)
+            .sort((a, b) => b.redCards - a.redCards || b.yellowCards - a.yellowCards || a.player.localeCompare(b.player));
+
+        if (carded.length === 0) {
+            disciplineEl.innerHTML = '<p class="no-data">No cards issued yet. Check back after matches are played.</p>';
+        } else {
+            makeSortableTable(
+                'discipline-container',
+                carded,
+                [
+                    { key: 'player', label: 'Player' },
+                    { key: 'team', label: 'Team' },
+                    { key: 'yellowCards', label: '🟨 Yellow' },
+                    { key: 'redCards', label: '🟥 Red' },
+                ],
+                'redCards',
+                'desc',
+                (p) => `<tr>
+                    <td>${p.player}</td>
+                    <td>${getFlag(p.team)} ${p.team}</td>
+                    <td>${p.yellowCards > 0 ? p.yellowCards : '—'}</td>
+                    <td>${p.redCards > 0 ? `<strong>${p.redCards}</strong>` : '—'}</td>
+                </tr>`
+            );
+        }
+    }
+
+    // --- Team Stats ---
+    if (teamStatsEl) {
+        const allTeams = Object.values(GROUPS).flatMap(g => g.teams);
+        const teamData = allTeams.map(team => {
+            const ms = matchStats[team.name] || { cleanSheets: 0, yellowCards: 0, redCards: 0 };
+            return {
+                name: team.name,
+                played: team.played,
+                won: team.won,
+                drawn: team.drawn,
+                lost: team.lost,
+                gf: team.gf,
+                ga: team.ga,
+                gd: team.gf - team.ga,
+                pts: team.pts,
+                cleanSheets: ms.cleanSheets,
+                yellowCards: ms.yellowCards,
+                redCards: ms.redCards,
+            };
+        });
+
+        makeSortableTable(
+            'team-stats-container',
+            teamData,
+            [
+                { key: 'name', label: 'Team' },
+                { key: 'played', label: 'GP' },
+                { key: 'won', label: 'W' },
+                { key: 'drawn', label: 'D' },
+                { key: 'lost', label: 'L' },
+                { key: 'gf', label: 'GF' },
+                { key: 'ga', label: 'GA' },
+                { key: 'gd', label: 'GD' },
+                { key: 'pts', label: 'Pts' },
+                { key: 'cleanSheets', label: 'CS' },
+                { key: 'yellowCards', label: '🟨' },
+                { key: 'redCards', label: '🟥' },
+            ],
+            'pts',
+            'desc',
+            (team) => `<tr>
+                <td>${getFlag(team.name)} ${team.name}</td>
+                <td>${team.played}</td>
+                <td>${team.won}</td>
+                <td>${team.drawn}</td>
+                <td>${team.lost}</td>
+                <td>${team.gf}</td>
+                <td>${team.ga}</td>
+                <td>${team.gd > 0 ? '+' : ''}${team.gd}</td>
+                <td><strong>${team.pts}</strong></td>
+                <td>${team.cleanSheets}</td>
+                <td>${team.yellowCards}</td>
+                <td>${team.redCards}</td>
+            </tr>`
+        );
+    }
+}
+
+// ==========================================
 // Scroll to Top Button
 // ==========================================
 
@@ -681,6 +938,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bracket page
     renderBracket();
+
+    // Stats page
+    renderStats();
 
     // Scroll to top
     initScrollToTop();

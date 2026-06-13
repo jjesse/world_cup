@@ -1,7 +1,9 @@
 name: Update Scores
 
 on:
-  # Run at 2 AM Eastern Time every day (06:00 UTC during EDT / 07:00 UTC during EST)
+  # Run at 2 AM Eastern Daylight Time every day (06:00 UTC).
+  # The World Cup runs June–July when the US observes EDT (UTC-4), so this is accurate
+  # for the entire tournament. During EST (UTC-5, winter) this would fire at 1 AM ET.
   schedule:
     - cron: '0 6 * * *'
   # Allow manual trigger from the Actions tab

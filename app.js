@@ -297,6 +297,16 @@ const SCHEDULE = [
     { date: '2026-06-28', time: '9:00 PM ET', group: 'L', home: 'England', away: 'Panama', venue: 'Estadio BBVA', city: 'Monterrey', score: null },
 ];
 
+// Apply nightly-fetched scores from scores.js (loaded before this file).
+// MATCH_SCORES keys are "home|away"; values carry score, scorers, yellowCards, redCards.
+if (typeof MATCH_SCORES !== 'undefined') {
+    for (const match of SCHEDULE) {
+        const key = `${match.home}|${match.away}`;
+        const data = MATCH_SCORES[key];
+        if (data) Object.assign(match, data);
+    }
+}
+
 // Teams organized by confederation
 const CONFEDERATIONS = {
     UEFA: {

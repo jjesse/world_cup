@@ -95,7 +95,7 @@ function updateScoresScriptReferences(cacheBuster) {
         const current = fs.readFileSync(filePath, 'utf8');
         const updated = current.replace(
             /src=(["'])scores\.js(?:\?v=[^"']*)?\1/g,
-            `src="scores.js?v=${cacheBuster}"`
+            (_, quote) => `src=${quote}scores.js?v=${cacheBuster}${quote}`
         );
 
         if (updated !== current) {

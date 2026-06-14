@@ -19,6 +19,15 @@ const path = require('path');
 
 const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
 const SCORES_JS_PATH = path.join(__dirname, '..', 'scores.js');
+const HTML_FILES = [
+    'index.html',
+    'groups.html',
+    'schedule.html',
+    'teams.html',
+    'bracket.html',
+    'stats.html',
+    'about.html',
+];
 
 // Maps football-data.org team names to the names used in app.js
 const TEAM_NAME_MAP = {
@@ -74,6 +83,25 @@ function fetchJSON(url, headers) {
         });
         req.on('error', reject);
     });
+}
+
+function buildCacheBuster(isoTimestamp) {
+    return isoTimestamp.replace(/\D/g, '').slice(0, 14);
+}
+
+function updateScoresScriptReferences(cacheBuster) {
+    for (const fileName of HTML_FILES) {
+        const filePath = path.join(__dirname, '..', fileName);
+        const current = fs.readFileSync(filePath, 'utf8');
+        const updated = current.replace(
+            /src=(["'])scores\.js(?:\?v=[^"']*)?\1/g,
+            (_, quote) => `src=${quote}scores.js?v=${cacheBuster}${quote}`
+        );
+
+        if (updated !== current) {
+            fs.writeFileSync(filePath, updated, 'utf8');
+        }
+    }
 }
 
 async function main() {
@@ -159,7 +187,15 @@ async function main() {
         '',
     ].join('\n');
 
+    const previousScores = fs.existsSync(SCORES_JS_PATH)
+        ? fs.readFileSync(SCORES_JS_PATH, 'utf8')
+        : '';
+    const scoresChanged = previousScores !== output;
+
     fs.writeFileSync(SCORES_JS_PATH, output, 'utf8');
+    if (scoresChanged) {
+        updateScoresScriptReferences(buildCacheBuster(now));
+    }
     console.log(`\nWrote ${finished} result(s) to scores.js`);
 }
 

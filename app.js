@@ -307,6 +307,56 @@ if (typeof MATCH_SCORES !== 'undefined') {
     }
 }
 
+// Recalculate group standings from schedule scores so group/stats tables stay current.
+function recalculateGroupStandings() {
+    const teamsByName = {};
+    for (const group of Object.values(GROUPS)) {
+        for (const team of group.teams) {
+            team.played = 0;
+            team.won = 0;
+            team.drawn = 0;
+            team.lost = 0;
+            team.gf = 0;
+            team.ga = 0;
+            team.pts = 0;
+            teamsByName[team.name] = team;
+        }
+    }
+
+    for (const match of SCHEDULE) {
+        if (!match.score || typeof match.score !== 'object') continue;
+        const homeTeam = teamsByName[match.home];
+        const awayTeam = teamsByName[match.away];
+        const homeGoals = Number(match.score.home);
+        const awayGoals = Number(match.score.away);
+        if (!homeTeam || !awayTeam || !Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) continue;
+
+        homeTeam.played++;
+        awayTeam.played++;
+        homeTeam.gf += homeGoals;
+        homeTeam.ga += awayGoals;
+        awayTeam.gf += awayGoals;
+        awayTeam.ga += homeGoals;
+
+        if (homeGoals > awayGoals) {
+            homeTeam.won++;
+            awayTeam.lost++;
+            homeTeam.pts += 3;
+        } else if (awayGoals > homeGoals) {
+            awayTeam.won++;
+            homeTeam.lost++;
+            awayTeam.pts += 3;
+        } else {
+            homeTeam.drawn++;
+            awayTeam.drawn++;
+            homeTeam.pts++;
+            awayTeam.pts++;
+        }
+    }
+}
+
+recalculateGroupStandings();
+
 // Teams organized by confederation
 const CONFEDERATIONS = {
     UEFA: {

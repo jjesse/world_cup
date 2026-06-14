@@ -776,6 +776,154 @@ function computeTeamMatchStats() {
     return teams;
 }
 
+function renderNoData(message) {
+    return `<p class="no-data">${message}</p>`;
+}
+
+function renderStatCards(cards) {
+    return `<div class="stats-grid">${cards.map(card => `
+        <div class="stat-card">
+            <span class="stat-number">${card.value}</span>
+            <span class="stat-label">${card.label}</span>
+            ${card.detail ? `<div style="margin-top:0.75rem;font-size:0.85rem;line-height:1.4;">${card.detail}</div>` : ''}
+        </div>
+    `).join('')}</div>`;
+}
+
+function renderStaticTable(columns, rows, rowRenderer) {
+    const headers = columns.map(label => `<th>${label}</th>`).join('');
+    const body = rows.map(rowRenderer).join('');
+    return `<div class="table-container"><table>
+        <thead><tr>${headers}</tr></thead>
+        <tbody>${body}</tbody>
+    </table></div>`;
+}
+
+function getCompletedMatches() {
+    return SCHEDULE
+        .filter(match => match.score && typeof match.score === 'object')
+        .map(match => ({
+            ...match,
+            homeGoals: Number(match.score.home),
+            awayGoals: Number(match.score.away),
+        }))
+        .filter(match => Number.isFinite(match.homeGoals) && Number.isFinite(match.awayGoals))
+        .map(match => ({
+            ...match,
+            totalGoals: match.homeGoals + match.awayGoals,
+            goalDiff: Math.abs(match.homeGoals - match.awayGoals),
+        }));
+}
+
+function getGoalEvents() {
+    const events = [];
+    for (const match of SCHEDULE) {
+        for (const scorer of (match.scorers || [])) {
+            events.push({
+                ...scorer,
+                minute: Number(scorer.minute) || 0,
+                home: match.home,
+                away: match.away,
+            });
+        }
+    }
+    return events;
+}
+
+function computeMatchHighlights() {
+    const matches = getCompletedMatches();
+    if (matches.length === 0) return null;
+
+    const biggestWin = [...matches].sort((a, b) =>
+        b.goalDiff - a.goalDiff ||
+        b.totalGoals - a.totalGoals ||
+        a.home.localeCompare(b.home)
+    )[0];
+
+    const highestScoring = [...matches].sort((a, b) =>
+        b.totalGoals - a.totalGoals ||
+        b.goalDiff - a.goalDiff ||
+        a.home.localeCompare(b.home)
+    )[0];
+
+    const totalGoals = matches.reduce((sum, match) => sum + match.totalGoals, 0);
+
+    return {
+        matchesPlayed: matches.length,
+        averageGoals: (totalGoals / matches.length).toFixed(2),
+        biggestWin,
+        highestScoring,
+    };
+}
+
+function computeOwnGoalStats(playerStats) {
+    const players = playerStats
+        .filter(player => player.ownGoals > 0)
+        .sort((a, b) => b.ownGoals - a.ownGoals || a.player.localeCompare(b.player));
+
+    const teamTotals = {};
+    for (const player of players) {
+        teamTotals[player.team] = (teamTotals[player.team] || 0) + player.ownGoals;
+    }
+
+    const teams = Object.entries(teamTotals)
+        .map(([team, ownGoals]) => ({ team, ownGoals }))
+        .sort((a, b) => b.ownGoals - a.ownGoals || a.team.localeCompare(b.team));
+
+    return {
+        totalOwnGoals: players.reduce((sum, player) => sum + player.ownGoals, 0),
+        players,
+        teams,
+    };
+}
+
+function computeGoalTimingStats() {
+    const goals = getGoalEvents();
+    if (goals.length === 0) {
+        return { earliestGoal: null, latestGoal: null, lateLeaders: [], lateGoalCount: 0 };
+    }
+
+    const earliestGoal = [...goals].sort((a, b) => a.minute - b.minute || a.player.localeCompare(b.player))[0];
+    const latestGoal = [...goals].sort((a, b) => b.minute - a.minute || a.player.localeCompare(b.player))[0];
+    const lateGoals = goals.filter(goal => goal.minute >= 75 && goal.type !== 'own goal');
+    const lateLeaderMap = {};
+
+    for (const goal of lateGoals) {
+        const key = `${goal.player}||${goal.team}`;
+        if (!lateLeaderMap[key]) {
+            lateLeaderMap[key] = { player: goal.player, team: goal.team, lateGoals: 0 };
+        }
+        lateLeaderMap[key].lateGoals++;
+    }
+
+    const lateLeaders = Object.values(lateLeaderMap)
+        .sort((a, b) => b.lateGoals - a.lateGoals || a.player.localeCompare(b.player));
+
+    return {
+        earliestGoal,
+        latestGoal,
+        lateLeaders,
+        lateGoalCount: lateGoals.length,
+    };
+}
+
+function computeTeamHighlights(teamData) {
+    const playedTeams = teamData.filter(team => team.played > 0);
+    if (playedTeams.length === 0) return null;
+
+    const maxGoals = Math.max(...playedTeams.map(team => team.gf));
+    const minConceded = Math.min(...playedTeams.map(team => team.ga));
+    const maxCleanSheets = Math.max(...playedTeams.map(team => team.cleanSheets));
+    const maxGoalDiff = Math.max(...playedTeams.map(team => team.gd));
+
+    return {
+        mostGoals: playedTeams.filter(team => team.gf === maxGoals),
+        fewestConceded: playedTeams.filter(team => team.ga === minConceded),
+        mostCleanSheets: playedTeams.filter(team => team.cleanSheets === maxCleanSheets),
+        bestGoalDifference: playedTeams.filter(team => team.gd === maxGoalDiff),
+    };
+}
+
 /**
  * Renders a sortable table into the element with the given containerId.
  * Clicking a column header re-sorts the table by that column.
@@ -828,13 +976,162 @@ function makeSortableTable(containerId, data, columns, defaultSortKey, defaultDi
 }
 
 function renderStats() {
+    const matchHighlightsEl = document.getElementById('match-highlights-container');
+    const ownGoalsEl = document.getElementById('own-goals-container');
+    const goalTimingEl = document.getElementById('goal-timing-container');
     const goldenBootEl = document.getElementById('golden-boot-container');
+    const penaltyGoalsEl = document.getElementById('penalty-goals-container');
     const disciplineEl = document.getElementById('discipline-container');
+    const teamHighlightsEl = document.getElementById('team-highlights-container');
     const teamStatsEl = document.getElementById('team-stats-container');
-    if (!goldenBootEl && !disciplineEl && !teamStatsEl) return;
+    if (!matchHighlightsEl && !ownGoalsEl && !goalTimingEl && !goldenBootEl && !penaltyGoalsEl && !disciplineEl && !teamHighlightsEl && !teamStatsEl) return;
 
     const playerStats = computePlayerStats();
     const matchStats = computeTeamMatchStats();
+    const allTeams = Object.values(GROUPS).flatMap(group => group.teams);
+    const teamData = allTeams.map(team => {
+        const ms = matchStats[team.name] || { cleanSheets: 0, yellowCards: 0, redCards: 0 };
+        return {
+            name: team.name,
+            played: team.played,
+            won: team.won,
+            drawn: team.drawn,
+            lost: team.lost,
+            gf: team.gf,
+            ga: team.ga,
+            gd: team.gf - team.ga,
+            pts: team.pts,
+            cleanSheets: ms.cleanSheets,
+            yellowCards: ms.yellowCards,
+            redCards: ms.redCards,
+        };
+    });
+    const matchHighlights = computeMatchHighlights();
+    const ownGoalStats = computeOwnGoalStats(playerStats);
+    const goalTimingStats = computeGoalTimingStats();
+    const teamHighlights = computeTeamHighlights(teamData);
+    const hasFinishedMatches = !!matchHighlights;
+    const hasScorerEvents = !!goalTimingStats.earliestGoal;
+
+    const formatMatchLine = match =>
+        `${getFlag(match.home)} ${match.home} ${match.homeGoals}–${match.awayGoals} ${getFlag(match.away)} ${match.away}`;
+    const formatGoalEvent = goal => {
+        const suffix = goal.type === 'penalty' ? ' (pen.)' : goal.type === 'own goal' ? ' (own goal)' : '';
+        return `${goal.minute}' · ${goal.player}${suffix}<br>${getFlag(goal.team)} ${goal.team}`;
+    };
+    const formatTeamLeaders = teams =>
+        teams.length === 1
+            ? `${getFlag(teams[0].name)} ${teams[0].name}`
+            : `${getFlag(teams[0].name)} ${teams[0].name}<br>+${teams.length - 1} tied`;
+    const formatOwnGoalLeader = (players) => {
+        if (players.length === 0) return '—';
+        const leaders = players.filter(player => player.ownGoals === players[0].ownGoals);
+        return leaders.length === 1
+            ? `${leaders[0].player}<br>${getFlag(leaders[0].team)} ${leaders[0].team}`
+            : `${leaders[0].player}<br>${getFlag(leaders[0].team)} ${leaders[0].team}<br>+${leaders.length - 1} tied`;
+    };
+
+    if (matchHighlightsEl) {
+        if (!hasFinishedMatches) {
+            matchHighlightsEl.innerHTML = renderNoData('No completed matches yet. Check back after the first results are in.');
+        } else {
+            matchHighlightsEl.innerHTML = renderStatCards([
+                {
+                    value: matchHighlights.matchesPlayed,
+                    label: 'Matches Played',
+                    detail: 'Completed matches with final scores'
+                },
+                {
+                    value: matchHighlights.averageGoals,
+                    label: 'Avg. Goals / Match',
+                    detail: 'Based on all finished matches'
+                },
+                {
+                    value: matchHighlights.biggestWin.goalDiff,
+                    label: 'Biggest Winning Margin',
+                    detail: formatMatchLine(matchHighlights.biggestWin)
+                },
+                {
+                    value: matchHighlights.highestScoring.totalGoals,
+                    label: 'Highest-Scoring Match',
+                    detail: formatMatchLine(matchHighlights.highestScoring)
+                },
+            ]);
+        }
+    }
+
+    if (ownGoalsEl) {
+        if (!hasScorerEvents) {
+            const msg = hasFinishedMatches
+                ? 'Own-goal data is not yet available from the data source. Match results are on the <a href="schedule.html">Schedule</a> page.'
+                : 'No own goals recorded yet. Check back after matches are played.';
+            ownGoalsEl.innerHTML = renderNoData(msg);
+        } else if (ownGoalStats.totalOwnGoals === 0) {
+            ownGoalsEl.innerHTML = renderNoData('No own goals have been recorded so far.');
+        } else {
+            ownGoalsEl.innerHTML = renderStatCards([
+                {
+                    value: ownGoalStats.totalOwnGoals,
+                    label: 'Total Own Goals',
+                    detail: 'From completed matches with scorer data'
+                },
+                {
+                    value: ownGoalStats.players[0].ownGoals,
+                    label: 'Most by Player',
+                    detail: formatOwnGoalLeader(ownGoalStats.players)
+                },
+                {
+                    value: ownGoalStats.teams[0].ownGoals,
+                    label: 'Most by Team',
+                    detail: `${getFlag(ownGoalStats.teams[0].team)} ${ownGoalStats.teams[0].team}`
+                },
+            ]);
+        }
+    }
+
+    if (goalTimingEl) {
+        if (!hasScorerEvents) {
+            const msg = hasFinishedMatches
+                ? 'Goal timing data is not yet available from the data source. Match results are on the <a href="schedule.html">Schedule</a> page.'
+                : 'No goals scored yet. Check back after matches are played.';
+            goalTimingEl.innerHTML = renderNoData(msg);
+        } else {
+            let html = renderStatCards([
+                {
+                    value: `${goalTimingStats.earliestGoal.minute}'`,
+                    label: 'Earliest Goal',
+                    detail: formatGoalEvent(goalTimingStats.earliestGoal)
+                },
+                {
+                    value: `${goalTimingStats.latestGoal.minute}'`,
+                    label: 'Latest Goal',
+                    detail: formatGoalEvent(goalTimingStats.latestGoal)
+                },
+                {
+                    value: goalTimingStats.lateGoalCount,
+                    label: 'Late Goals (75\'+)',
+                    detail: 'Non-own-goal finishes scored from the 75th minute on'
+                },
+            ]);
+
+            if (goalTimingStats.lateLeaders.length > 0) {
+                html += '<h3>Late Goal Leaders</h3>';
+                html += renderStaticTable(
+                    ['Player', 'Team', 'Goals 75\'+'],
+                    goalTimingStats.lateLeaders,
+                    (player) => `<tr>
+                        <td>${player.player}</td>
+                        <td>${getFlag(player.team)} ${player.team}</td>
+                        <td>${player.lateGoals}</td>
+                    </tr>`
+                );
+            } else {
+                html += renderNoData('No late goals have been scored yet.');
+            }
+
+            goalTimingEl.innerHTML = html;
+        }
+    }
 
     // --- Golden Boot ---
     if (goldenBootEl) {
@@ -844,7 +1141,10 @@ function renderStats() {
             .map((p, i) => ({ ...p, rank: i + 1 }));
 
         if (scorers.length === 0) {
-            goldenBootEl.innerHTML = '<p class="no-data">No goals scored yet. Check back after matches are played.</p>';
+            const msg = hasFinishedMatches
+                ? 'Scorer data is not yet available from the data source. Match results are on the <a href="schedule.html">Schedule</a> page.'
+                : 'No goals scored yet. Check back after matches are played.';
+            goldenBootEl.innerHTML = `<p class="no-data">${msg}</p>`;
         } else {
             makeSortableTable(
                 'golden-boot-container',
@@ -872,6 +1172,46 @@ function renderStats() {
         }
     }
 
+    if (penaltyGoalsEl) {
+        const penaltyLeaders = playerStats
+            .filter(player => player.penalties > 0)
+            .sort((a, b) => b.penalties - a.penalties || b.goals - a.goals || a.player.localeCompare(b.player))
+            .map((player, index) => ({ ...player, rank: index + 1 }));
+
+        if (!hasScorerEvents) {
+            const msg = hasFinishedMatches
+                ? 'Penalty-goal data is not yet available from the data source. Match results are on the <a href="schedule.html">Schedule</a> page.'
+                : 'No penalty goals recorded yet. Check back after matches are played.';
+            penaltyGoalsEl.innerHTML = renderNoData(msg);
+        } else if (penaltyLeaders.length === 0) {
+            penaltyGoalsEl.innerHTML = renderNoData('No penalty goals have been recorded so far.');
+        } else {
+            makeSortableTable(
+                'penalty-goals-container',
+                penaltyLeaders,
+                [
+                    { key: 'rank', label: '#' },
+                    { key: 'player', label: 'Player' },
+                    { key: 'team', label: 'Team' },
+                    { key: 'penalties', label: 'Penalties' },
+                    { key: 'goals', label: 'Total Goals' },
+                ],
+                'penalties',
+                'desc',
+                (player) => {
+                    const medal = player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : player.rank;
+                    return `<tr>
+                        <td class="rank-cell">${medal}</td>
+                        <td>${player.player}</td>
+                        <td>${getFlag(player.team)} ${player.team}</td>
+                        <td>${player.penalties}</td>
+                        <td>${player.goals}</td>
+                    </tr>`;
+                }
+            );
+        }
+    }
+
     // --- Discipline ---
     if (disciplineEl) {
         const carded = playerStats
@@ -879,7 +1219,10 @@ function renderStats() {
             .sort((a, b) => b.redCards - a.redCards || b.yellowCards - a.yellowCards || a.player.localeCompare(b.player));
 
         if (carded.length === 0) {
-            disciplineEl.innerHTML = '<p class="no-data">No cards issued yet. Check back after matches are played.</p>';
+            const msg = hasFinishedMatches
+                ? 'Card data is not yet available from the data source. Match results are on the <a href="schedule.html">Schedule</a> page.'
+                : 'No cards issued yet. Check back after matches are played.';
+            disciplineEl.innerHTML = `<p class="no-data">${msg}</p>`;
         } else {
             makeSortableTable(
                 'discipline-container',
@@ -902,27 +1245,37 @@ function renderStats() {
         }
     }
 
+    if (teamHighlightsEl) {
+        if (!teamHighlights) {
+            teamHighlightsEl.innerHTML = renderNoData('No team highlights yet. Check back after matches are played.');
+        } else {
+            teamHighlightsEl.innerHTML = renderStatCards([
+                {
+                    value: teamHighlights.mostGoals[0].gf,
+                    label: 'Most Goals Scored',
+                    detail: formatTeamLeaders(teamHighlights.mostGoals)
+                },
+                {
+                    value: teamHighlights.fewestConceded[0].ga,
+                    label: 'Fewest Goals Conceded',
+                    detail: formatTeamLeaders(teamHighlights.fewestConceded)
+                },
+                {
+                    value: teamHighlights.mostCleanSheets[0].cleanSheets,
+                    label: 'Most Clean Sheets',
+                    detail: formatTeamLeaders(teamHighlights.mostCleanSheets)
+                },
+                {
+                    value: teamHighlights.bestGoalDifference[0].gd > 0 ? `+${teamHighlights.bestGoalDifference[0].gd}` : teamHighlights.bestGoalDifference[0].gd,
+                    label: 'Best Goal Difference',
+                    detail: formatTeamLeaders(teamHighlights.bestGoalDifference)
+                },
+            ]);
+        }
+    }
+
     // --- Team Stats ---
     if (teamStatsEl) {
-        const allTeams = Object.values(GROUPS).flatMap(g => g.teams);
-        const teamData = allTeams.map(team => {
-            const ms = matchStats[team.name] || { cleanSheets: 0, yellowCards: 0, redCards: 0 };
-            return {
-                name: team.name,
-                played: team.played,
-                won: team.won,
-                drawn: team.drawn,
-                lost: team.lost,
-                gf: team.gf,
-                ga: team.ga,
-                gd: team.gf - team.ga,
-                pts: team.pts,
-                cleanSheets: ms.cleanSheets,
-                yellowCards: ms.yellowCards,
-                redCards: ms.redCards,
-            };
-        });
-
         makeSortableTable(
             'team-stats-container',
             teamData,

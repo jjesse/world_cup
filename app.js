@@ -835,6 +835,7 @@ function renderStats() {
 
     const playerStats = computePlayerStats();
     const matchStats = computeTeamMatchStats();
+    const hasFinishedMatches = SCHEDULE.some(m => m.score && typeof m.score === 'object');
 
     // --- Golden Boot ---
     if (goldenBootEl) {
@@ -844,7 +845,10 @@ function renderStats() {
             .map((p, i) => ({ ...p, rank: i + 1 }));
 
         if (scorers.length === 0) {
-            goldenBootEl.innerHTML = '<p class="no-data">No goals scored yet. Check back after matches are played.</p>';
+            const msg = hasFinishedMatches
+                ? 'Scorer data is not yet available from the data source. Match results are on the <a href="schedule.html">Schedule</a> page.'
+                : 'No goals scored yet. Check back after matches are played.';
+            goldenBootEl.innerHTML = `<p class="no-data">${msg}</p>`;
         } else {
             makeSortableTable(
                 'golden-boot-container',
@@ -879,7 +883,10 @@ function renderStats() {
             .sort((a, b) => b.redCards - a.redCards || b.yellowCards - a.yellowCards || a.player.localeCompare(b.player));
 
         if (carded.length === 0) {
-            disciplineEl.innerHTML = '<p class="no-data">No cards issued yet. Check back after matches are played.</p>';
+            const msg = hasFinishedMatches
+                ? 'Card data is not yet available from the data source. Match results are on the <a href="schedule.html">Schedule</a> page.'
+                : 'No cards issued yet. Check back after matches are played.';
+            disciplineEl.innerHTML = `<p class="no-data">${msg}</p>`;
         } else {
             makeSortableTable(
                 'discipline-container',

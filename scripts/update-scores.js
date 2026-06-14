@@ -61,6 +61,13 @@ function normaliseTeam(name) {
     return TEAM_NAME_MAP[name] || name;
 }
 
+/** Rate-limit delay between individual match-detail requests (free tier: 10 calls/min). */
+const RATE_LIMIT_DELAY_MS = 6500;
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 /**
  * Make a GET request and return the parsed JSON response.
  */
@@ -126,6 +133,7 @@ async function main() {
 
     const scores = {};
     let finished = 0;
+    let detailCallsMade = 0;
 
     for (const match of data.matches) {
         if (match.status !== 'FINISHED') continue;
@@ -141,9 +149,26 @@ async function main() {
             },
         };
 
-        // Goals / scorers (may not be present on free tier)
-        if (Array.isArray(match.goals) && match.goals.length > 0) {
-            entry.scorers = match.goals.map((g) => ({
+        // Goals/scorers and bookings/cards — the competition list endpoint may omit these
+        // on the free tier, so fall back to the individual match detail endpoint when needed.
+        let eventSource = match;
+        const listHasEvents = 'goals' in match || 'bookings' in match;
+        if (!listHasEvents && match.id) {
+            try {
+                if (detailCallsMade > 0) await sleep(RATE_LIMIT_DELAY_MS);
+                eventSource = await fetchJSON(
+                    `https://api.football-data.org/v4/matches/${match.id}`,
+                    headers
+                );
+                detailCallsMade++;
+                console.log(`  ↳ Fetched match detail for ${home} vs ${away}`);
+            } catch (e) {
+                console.warn(`  ⚠ Match detail unavailable for ${home} vs ${away}: ${e.message}`);
+            }
+        }
+
+        if (Array.isArray(eventSource.goals) && eventSource.goals.length > 0) {
+            entry.scorers = eventSource.goals.map((g) => ({
                 player: g.scorer?.name ?? 'Unknown',
                 team: normaliseTeam(g.team?.name ?? ''),
                 minute: g.minute ?? 0,
@@ -153,10 +178,9 @@ async function main() {
             }));
         }
 
-        // Bookings / cards (may not be present on free tier)
-        if (Array.isArray(match.bookings) && match.bookings.length > 0) {
-            const yellows = match.bookings.filter((b) => b.card === 'YELLOW');
-            const reds    = match.bookings.filter((b) => b.card === 'RED' || b.card === 'YELLOW_RED');
+        if (Array.isArray(eventSource.bookings) && eventSource.bookings.length > 0) {
+            const yellows = eventSource.bookings.filter((b) => b.card === 'YELLOW');
+            const reds    = eventSource.bookings.filter((b) => b.card === 'RED' || b.card === 'YELLOW_RED');
             if (yellows.length > 0) {
                 entry.yellowCards = yellows.map((b) => ({
                     player: b.player?.name ?? 'Unknown',

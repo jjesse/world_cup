@@ -702,7 +702,7 @@ function renderSchedule(filter = '') {
             const stageLabel = getMatchStageLabel(m);
             html += `
                 <div class="match-item">
-                    <div class="match-time"><span class="match-group-badge">${stageLabel}</span>${m.time}</div>
+                    <div class="match-time"><span class="match-group-badge">${stageLabel}</span>${m.time || 'TBD'}</div>
                     <div class="match-team">${homeFlag} ${m.home}</div>
                     ${scoreDisplay}
                     <div class="match-team">${awayFlag} ${m.away}</div>

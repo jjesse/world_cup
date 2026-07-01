@@ -16,7 +16,7 @@ on:
 
 concurrency:
   group: update-scores
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   update-scores:

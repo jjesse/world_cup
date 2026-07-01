@@ -845,18 +845,18 @@ function renderBracket() {
             <div class="round-header">🏆 ${round.name} — ${round.date}</div>
             <div class="matches-grid">`;
         for (const match of round.matches) {
-            const team1Class = match.team1 === 'TBD' ? ' tbd' : '';
-            const team2Class = match.team2 === 'TBD' ? ' tbd' : '';
+            const team1ClassSuffix = match.team1 === 'TBD' ? ' tbd' : '';
+            const team2ClassSuffix = match.team2 === 'TBD' ? ' tbd' : '';
             const score1 = match.score1 != null ? match.score1 : '-';
             const score2 = match.score2 != null ? match.score2 : '-';
             const shootout = match.shootout
-                ? `<div class="bracket-match-footer" aria-label="Penalty shootout result: ${match.shootout.home} to ${match.shootout.away}">🎯 Pens: ${match.shootout.home}–${match.shootout.away}</div>`
+                ? `<div class="bracket-match-footer"><span role="text" aria-label="Penalty shootout result: ${match.shootout.home} to ${match.shootout.away}">🎯 Pens: ${match.shootout.home}–${match.shootout.away}</span></div>`
                 : '';
             html += `
                 <div class="bracket-match">
                     <div class="match-header">${match.label} · ${match.date}</div>
-                    <div class="bracket-team${team1Class}"><span>${match.team1 !== 'TBD' ? `${getFlag(match.team1)} ` : ''}${match.team1}</span><span class="score">${score1}</span></div>
-                    <div class="bracket-team${team2Class}"><span>${match.team2 !== 'TBD' ? `${getFlag(match.team2)} ` : ''}${match.team2}</span><span class="score">${score2}</span></div>
+                    <div class="bracket-team${team1ClassSuffix}"><span>${match.team1 !== 'TBD' ? `${getFlag(match.team1)} ` : ''}${match.team1}</span><span class="score">${score1}</span></div>
+                    <div class="bracket-team${team2ClassSuffix}"><span>${match.team2 !== 'TBD' ? `${getFlag(match.team2)} ` : ''}${match.team2}</span><span class="score">${score2}</span></div>
                     <div class="bracket-match-footer">🏟️ ${match.venue}</div>
                     ${shootout}
                 </div>`;

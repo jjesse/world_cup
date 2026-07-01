@@ -8,7 +8,7 @@ on:
       - .github/workflows/update-scores.yml
       - scripts/update-scores.js
       - app.js
-  # Refresh every 3 hours so knockout fixtures/results stay current across stage transitions.
+  # Refresh at :15 past every 3rd hour so knockout fixtures/results stay current across stage transitions.
   schedule:
     - cron: '15 */3 * * *'
   # Allow manual trigger from the Actions tab

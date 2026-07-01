@@ -298,8 +298,8 @@ async function main() {
         `// Last updated: ${now}`,
         `// Matches with results: ${finished}`,
         `const TOURNAMENT_LAST_UPDATED = ${JSON.stringify(now)};`,
-        `const MATCH_SCORES = ${JSON.stringify(scores, null, 2)};`,
-        `const TOURNAMENT_MATCHES = ${JSON.stringify(tournamentMatches, null, 2)};`,
+        `const MATCH_SCORES = ${JSON.stringify(scores)};`,
+        `const TOURNAMENT_MATCHES = ${JSON.stringify(tournamentMatches)};`,
         '',
     ].join('\n');
 

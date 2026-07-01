@@ -9,6 +9,8 @@ const {
     normalisePhase,
     normaliseGroup,
     buildMatchEntry,
+    unwrapMatchPayload,
+    extractMatchEvents,
 } = require('./update-scores.js');
 
 test('normalises team aliases and stage metadata from the API feed', () => {
@@ -42,4 +44,53 @@ test('buildMatchEntry converts kickoff times into Eastern Time and preserves sho
     assert.equal(entry.away, 'United States');
     assert.deepEqual(entry.score, { home: 1, away: 1 });
     assert.deepEqual(entry.shootout, { home: 4, away: 3 });
+});
+
+test('extracts scorer and booking events from nested match detail payloads', () => {
+    const detailPayload = {
+        match: {
+            goals: [
+                {
+                    minute: 12,
+                    type: 'REGULAR',
+                    team: { name: 'United States of America' },
+                    scorer: { name: 'Alex Morgan' },
+                },
+                {
+                    minute: 88,
+                    type: 'OWN_GOAL',
+                    team: { name: 'Cabo Verde' },
+                    scorer: { name: 'Defender Name' },
+                },
+            ],
+            bookings: [
+                {
+                    minute: 20,
+                    card: 'YELLOW_CARD',
+                    team: { name: 'United States of America' },
+                    player: { name: 'Midfielder Name' },
+                },
+                {
+                    minute: 76,
+                    card: 'YELLOW_RED_CARD',
+                    team: { name: 'Cape Verde Islands' },
+                    player: { name: 'Captain Name' },
+                },
+            ],
+        },
+    };
+
+    assert.deepEqual(unwrapMatchPayload(detailPayload), detailPayload.match);
+    assert.deepEqual(extractMatchEvents(detailPayload), {
+        scorers: [
+            { player: 'Alex Morgan', team: 'United States', minute: 12, type: 'goal' },
+            { player: 'Defender Name', team: 'Cape Verde', minute: 88, type: 'own goal' },
+        ],
+        yellowCards: [
+            { player: 'Midfielder Name', team: 'United States', minute: 20 },
+        ],
+        redCards: [
+            { player: 'Captain Name', team: 'Cape Verde', minute: 76 },
+        ],
+    });
 });

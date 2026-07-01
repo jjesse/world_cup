@@ -1,10 +1,10 @@
 /**
  * update-scores.js
  *
- * Fetches completed 2026 FIFA World Cup match results from the
+ * Fetches 2026 FIFA World Cup schedule and match results from the
  * football-data.org API and writes them to scores.js in the repo root.
  *
- * Run via GitHub Actions nightly, or manually:
+ * Run via GitHub Actions on a schedule, or manually:
  *   FOOTBALL_DATA_API_KEY=<key> node scripts/update-scores.js
  *
  * Requires: FOOTBALL_DATA_API_KEY environment variable (free key from
@@ -47,6 +47,7 @@ const TEAM_NAME_MAP = {
     'DR Congo': 'DR Congo',
     'Democratic Republic of Congo': 'DR Congo',
     'Cabo Verde': 'Cape Verde',
+    'Cape Verde Islands': 'Cape Verde',
     // AFC
     'Korea Republic': 'South Korea',
     'Republic of Korea': 'South Korea',
@@ -96,6 +97,90 @@ function buildCacheBuster(isoTimestamp) {
     return isoTimestamp.replace(/\D/g, '').slice(0, 14);
 }
 
+function getEasternDateTimeParts(utcDate) {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+    });
+
+    const parts = formatter.formatToParts(new Date(utcDate));
+    const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return {
+        date: `${map.year}-${map.month}-${map.day}`,
+        time: `${map.hour}:${map.minute} ${map.dayPeriod} ET`,
+    };
+}
+
+function normalisePhase(match) {
+    const stage = match.stage || '';
+    switch (stage) {
+    case 'GROUP_STAGE':
+        return 'Group Stage';
+    case 'LAST_32':
+        return 'Round of 32';
+    case 'LAST_16':
+        return 'Round of 16';
+    case 'QUARTER_FINALS':
+        return 'Quarterfinals';
+    case 'SEMI_FINALS':
+        return 'Semifinals';
+    case 'THIRD_PLACE':
+        return 'Third-place Match';
+    case 'FINAL':
+        return 'Final';
+    default:
+        return stage ? stage.replace(/_/g, ' ') : 'Knockout Stage';
+    }
+}
+
+function normaliseGroup(groupName) {
+    const match = /^GROUP_([A-Z])$/i.exec(groupName || '');
+    return match ? match[1].toUpperCase() : '';
+}
+
+function buildMatchEntry(match) {
+    const { date, time } = getEasternDateTimeParts(match.utcDate);
+    const entry = {
+        id: match.id,
+        utcDate: match.utcDate,
+        date,
+        time,
+        phase: normalisePhase(match),
+        group: normaliseGroup(match.group),
+        status: match.status,
+        matchday: match.matchday ?? null,
+        home: normaliseTeam(match.homeTeam?.name ?? ''),
+        away: normaliseTeam(match.awayTeam?.name ?? ''),
+        venue: match.venue || '',
+        city: match.city || '',
+    };
+
+    const fullTimeHome = match.score?.fullTime?.home;
+    const fullTimeAway = match.score?.fullTime?.away;
+    if (Number.isFinite(fullTimeHome) && Number.isFinite(fullTimeAway)) {
+        entry.score = {
+            home: fullTimeHome,
+            away: fullTimeAway,
+        };
+    }
+
+    const penaltiesHome = match.score?.penalties?.home;
+    const penaltiesAway = match.score?.penalties?.away;
+    if (Number.isFinite(penaltiesHome) && Number.isFinite(penaltiesAway)) {
+        entry.shootout = {
+            home: penaltiesHome,
+            away: penaltiesAway,
+        };
+    }
+
+    return entry;
+}
+
 function updateScoresScriptReferences(cacheBuster) {
     for (const fileName of HTML_FILES) {
         const filePath = path.join(__dirname, '..', fileName);
@@ -132,28 +217,19 @@ async function main() {
     }
 
     const scores = {};
+    const tournamentMatches = [];
     let finished = 0;
     let detailCallsMade = 0;
 
     for (const match of data.matches) {
-        if (match.status !== 'FINISHED') continue;
-
-        const home = normaliseTeam(match.homeTeam.name);
-        const away = normaliseTeam(match.awayTeam.name);
-        const key = `${home}|${away}`;
-
-        const entry = {
-            score: {
-                home: match.score.fullTime.home,
-                away: match.score.fullTime.away,
-            },
-        };
+        const entry = buildMatchEntry(match);
+        const key = `${entry.home}|${entry.away}`;
 
         // Goals/scorers and bookings/cards — the competition list endpoint may omit these
         // on the free tier, so fall back to the individual match detail endpoint when needed.
         let eventSource = match;
         const listHasEvents = 'goals' in match || 'bookings' in match;
-        if (!listHasEvents && match.id) {
+        if (match.status === 'FINISHED' && !listHasEvents && match.id) {
             try {
                 if (detailCallsMade > 0) await sleep(RATE_LIMIT_DELAY_MS);
                 eventSource = await fetchJSON(
@@ -161,9 +237,9 @@ async function main() {
                     headers
                 );
                 detailCallsMade++;
-                console.log(`  ↳ Fetched match detail for ${home} vs ${away}`);
+                console.log(`  ↳ Fetched match detail for ${entry.home} vs ${entry.away}`);
             } catch (e) {
-                console.warn(`  ⚠ Match detail unavailable for ${home} vs ${away}: ${e.message}`);
+                console.warn(`  ⚠ Match detail unavailable for ${entry.home} vs ${entry.away}: ${e.message}`);
             }
         }
 
@@ -197,9 +273,23 @@ async function main() {
             }
         }
 
-        scores[key] = entry;
-        finished++;
-        console.log(`  ✓ ${home} ${entry.score.home}–${entry.score.away} ${away}`);
+        tournamentMatches.push(entry);
+
+        if (match.status === 'FINISHED' && entry.score) {
+            scores[key] = {
+                score: entry.score,
+            };
+            if (entry.shootout) scores[key].shootout = entry.shootout;
+            if (entry.scorers) scores[key].scorers = entry.scorers;
+            if (entry.yellowCards) scores[key].yellowCards = entry.yellowCards;
+            if (entry.redCards) scores[key].redCards = entry.redCards;
+
+            finished++;
+            const shootoutSummary = entry.shootout
+                ? ` (${entry.shootout.home}–${entry.shootout.away} pens)`
+                : '';
+            console.log(`  ✓ ${entry.home} ${entry.score.home}–${entry.score.away} ${entry.away}${shootoutSummary}`);
+        }
     }
 
     const now = new Date().toISOString();
@@ -207,7 +297,9 @@ async function main() {
         '// AUTO-GENERATED by update-scores workflow. Do not edit manually.',
         `// Last updated: ${now}`,
         `// Matches with results: ${finished}`,
+        `const TOURNAMENT_LAST_UPDATED = ${JSON.stringify(now)};`,
         `const MATCH_SCORES = ${JSON.stringify(scores, null, 2)};`,
+        `const TOURNAMENT_MATCHES = ${JSON.stringify(tournamentMatches, null, 2)};`,
         '',
     ].join('\n');
 
@@ -223,7 +315,18 @@ async function main() {
     console.log(`\nWrote ${finished} result(s) to scores.js`);
 }
 
-main().catch((err) => {
-    console.error(err.message);
-    process.exit(1);
-});
+if (require.main === module) {
+    main().catch((err) => {
+        console.error(err.message);
+        process.exit(1);
+    });
+}
+
+module.exports = {
+    TEAM_NAME_MAP,
+    normaliseTeam,
+    getEasternDateTimeParts,
+    normalisePhase,
+    normaliseGroup,
+    buildMatchEntry,
+};

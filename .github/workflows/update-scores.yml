@@ -1,13 +1,22 @@
 name: Update Scores
 
 on:
-  # Run at 2 AM Eastern Daylight Time every day (06:00 UTC).
-  # The World Cup runs June–July when the US observes EDT (UTC-4), so this is accurate
-  # for the entire tournament. During EST (UTC-5, winter) this would fire at 1 AM ET.
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/update-scores.yml
+      - scripts/update-scores.js
+      - app.js
+  # Refresh every 3 hours so knockout fixtures/results stay current across stage transitions.
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '15 */3 * * *'
   # Allow manual trigger from the Actions tab
   workflow_dispatch:
+
+concurrency:
+  group: update-scores
+  cancel-in-progress: true
 
 jobs:
   update-scores:
@@ -22,7 +31,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Fetch and update scores
         run: node scripts/update-scores.js

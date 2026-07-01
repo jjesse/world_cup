@@ -113,11 +113,13 @@
                 This is a static HTML/CSS/JavaScript dashboard with no backend dependencies.
                 It is inspired by the
                 <a href="https://github.com/jjesse/nfl-stats-dashboard" target="_blank" rel="noopener noreferrer">NFL Stats Dashboard</a>
-                and similar fan dashboards. All tournament data (groups, schedule, teams) is embedded
-                directly in <code>app.js</code>. Match scores and statistics are updated automatically
-                every night at 2 AM ET via a GitHub Actions workflow that fetches results from the
+                and similar fan dashboards. Core tournament structure lives in <code>app.js</code>, while
+                the live schedule, results, and stat-event feed is generated into <code>scores.js</code>.
+                Data refreshes automatically every 3 hours via a GitHub Actions workflow that fetches the
+                latest World Cup matches from the
                 <a href="https://www.football-data.org/" target="_blank" rel="noopener noreferrer">football-data.org</a>
-                API and commits them to <code>scores.js</code>, triggering a fresh deployment.
+                API and commits them to <code>scores.js</code>, with manual re-runs available from the
+                repository Actions tab whenever an immediate refresh is needed.
             </p>
 
             <div style="margin-top:1.5rem;padding:1rem;background:#f8f9fa;border-left:4px solid #003f87;border-radius:4px;">
@@ -140,6 +142,6 @@
     <button id="scroll-to-top" class="scroll-to-top" aria-label="Scroll to top" title="Scroll to top">↑</button>
 
     <script src="scores.js?v=20260701073156"></script>
-    <script src="app.js?v=202606142057"></script>
+    <script src="app.js?v=202607011930"></script>
 </body>
 </html>

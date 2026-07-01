@@ -702,7 +702,7 @@ function renderSchedule(filter = '') {
             const stageLabel = getMatchStageLabel(m);
             html += `
                 <div class="match-item">
-                    <div class="match-time"><span class="match-group-badge">${stageLabel}</span>${m.time || 'TBD'}</div>
+                    <div class="match-time"><span class="match-group-badge" aria-label="Stage: ${stageLabel}">${stageLabel}</span>${m.time || 'TBD'}</div>
                     <div class="match-team">${homeFlag} ${m.home}</div>
                     ${scoreDisplay}
                     <div class="match-team">${awayFlag} ${m.away}</div>
@@ -850,7 +850,7 @@ function renderBracket() {
             const score1 = match.score1 != null ? match.score1 : '-';
             const score2 = match.score2 != null ? match.score2 : '-';
             const shootout = match.shootout
-                ? `<div class="bracket-match-footer">🎯 Pens: ${match.shootout.home}–${match.shootout.away}</div>`
+                ? `<div class="bracket-match-footer" aria-label="Penalty shootout result: ${match.shootout.home} to ${match.shootout.away}">🎯 Pens: ${match.shootout.home}–${match.shootout.away}</div>`
                 : '';
             html += `
                 <div class="bracket-match">

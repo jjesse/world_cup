@@ -107,3 +107,27 @@ test('authoritative tournament feed supports knockout rendering without corrupti
     assert.match(bracketContainer.innerHTML, /Brazil/);
     assert.match(bracketContainer.innerHTML, /Japan/);
 });
+
+test('knockout slots without confirmed teams render as TBD placeholders', () => {
+    const bracketContainer = { innerHTML: '' };
+    const app = loadApp({
+        TOURNAMENT_MATCHES: [
+            {
+                date: '2026-07-04',
+                time: '7:00 PM ET',
+                phase: 'Round of 16',
+                status: 'TIMED',
+                home: '',
+                away: '   ',
+                venue: 'Gillette Stadium',
+                city: 'Boston',
+            },
+        ],
+    }, {
+        'bracket-container': bracketContainer,
+    });
+
+    app.renderBracket();
+    assert.match(bracketContainer.innerHTML, /Round of 16/);
+    assert.match(bracketContainer.innerHTML, />TBD</);
+});

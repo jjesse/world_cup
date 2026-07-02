@@ -181,6 +181,56 @@ function buildMatchEntry(match) {
     return entry;
 }
 
+function unwrapMatchPayload(payload) {
+    if (payload && typeof payload === 'object' && payload.match && typeof payload.match === 'object') {
+        return payload.match;
+    }
+    return payload && typeof payload === 'object' ? payload : {};
+}
+
+function extractMatchEvents(payload) {
+    const eventSource = unwrapMatchPayload(payload);
+    const events = {};
+
+    if (Array.isArray(eventSource.goals) && eventSource.goals.length > 0) {
+        events.scorers = eventSource.goals.map((goal) => ({
+            player: goal.scorer?.name ?? 'Unknown',
+            team: normaliseTeam(goal.team?.name ?? ''),
+            minute: goal.minute ?? 0,
+            type: goal.type === 'OWN_GOAL' ? 'own goal'
+                : goal.type === 'PENALTY'   ? 'penalty'
+                :                            'goal',
+        }));
+    }
+
+    if (Array.isArray(eventSource.bookings) && eventSource.bookings.length > 0) {
+        const yellows = eventSource.bookings.filter((booking) => booking.card === 'YELLOW' || booking.card === 'YELLOW_CARD');
+        const reds = eventSource.bookings.filter((booking) =>
+            booking.card === 'RED' ||
+            booking.card === 'RED_CARD' ||
+            booking.card === 'YELLOW_RED' ||
+            booking.card === 'YELLOW_RED_CARD'
+        );
+
+        if (yellows.length > 0) {
+            events.yellowCards = yellows.map((booking) => ({
+                player: booking.player?.name ?? 'Unknown',
+                team: normaliseTeam(booking.team?.name ?? ''),
+                minute: booking.minute ?? 0,
+            }));
+        }
+        if (reds.length > 0) {
+            events.redCards = reds.map((booking) => ({
+                player: booking.player?.name ?? 'Unknown',
+                team: normaliseTeam(booking.team?.name ?? ''),
+                minute: booking.minute ?? 0,
+            }));
+        }
+    }
+
+    return events;
+}
+
 function updateScoresScriptReferences(cacheBuster) {
     for (const fileName of HTML_FILES) {
         const filePath = path.join(__dirname, '..', fileName);
@@ -227,15 +277,15 @@ async function main() {
 
         // Goals/scorers and bookings/cards — the competition list endpoint may omit these
         // on the free tier, so fall back to the individual match detail endpoint when needed.
-        let eventSource = match;
-        const listHasEvents = 'goals' in match || 'bookings' in match;
+        let eventSource = unwrapMatchPayload(match);
+        const listHasEvents = Array.isArray(eventSource.goals) || Array.isArray(eventSource.bookings);
         if (match.status === 'FINISHED' && !listHasEvents && match.id) {
             try {
                 if (detailCallsMade > 0) await sleep(RATE_LIMIT_DELAY_MS);
-                eventSource = await fetchJSON(
+                eventSource = unwrapMatchPayload(await fetchJSON(
                     `https://api.football-data.org/v4/matches/${match.id}`,
                     headers
-                );
+                ));
                 detailCallsMade++;
                 console.log(`  ↳ Fetched match detail for ${entry.home} vs ${entry.away}`);
             } catch (e) {
@@ -243,35 +293,7 @@ async function main() {
             }
         }
 
-        if (Array.isArray(eventSource.goals) && eventSource.goals.length > 0) {
-            entry.scorers = eventSource.goals.map((g) => ({
-                player: g.scorer?.name ?? 'Unknown',
-                team: normaliseTeam(g.team?.name ?? ''),
-                minute: g.minute ?? 0,
-                type: g.type === 'OWN_GOAL' ? 'own goal'
-                    : g.type === 'PENALTY'   ? 'penalty'
-                    :                          'goal',
-            }));
-        }
-
-        if (Array.isArray(eventSource.bookings) && eventSource.bookings.length > 0) {
-            const yellows = eventSource.bookings.filter((b) => b.card === 'YELLOW');
-            const reds    = eventSource.bookings.filter((b) => b.card === 'RED' || b.card === 'YELLOW_RED');
-            if (yellows.length > 0) {
-                entry.yellowCards = yellows.map((b) => ({
-                    player: b.player?.name ?? 'Unknown',
-                    team: normaliseTeam(b.team?.name ?? ''),
-                    minute: b.minute ?? 0,
-                }));
-            }
-            if (reds.length > 0) {
-                entry.redCards = reds.map((b) => ({
-                    player: b.player?.name ?? 'Unknown',
-                    team: normaliseTeam(b.team?.name ?? ''),
-                    minute: b.minute ?? 0,
-                }));
-            }
-        }
+        Object.assign(entry, extractMatchEvents(eventSource));
 
         tournamentMatches.push(entry);
 
@@ -329,4 +351,6 @@ module.exports = {
     normalisePhase,
     normaliseGroup,
     buildMatchEntry,
+    unwrapMatchPayload,
+    extractMatchEvents,
 };

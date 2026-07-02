@@ -328,6 +328,10 @@ function normaliseTeamName(name) {
     return TEAM_NAME_ALIASES[name] || name;
 }
 
+function getDisplayTeamName(name) {
+    return typeof name === 'string' && name.trim() ? normaliseTeamName(name) : 'TBD';
+}
+
 function cloneValue(value) {
     if (Array.isArray(value)) return value.map(cloneValue);
     if (value && typeof value === 'object') {
@@ -404,8 +408,8 @@ function buildScheduleFromApiMatches(matches) {
     return matches
         .map((sourceMatch) => {
             const base = cloneMatch(sourceMatch);
-            base.home = normaliseTeamName(base.home);
-            base.away = normaliseTeamName(base.away);
+            base.home = getDisplayTeamName(base.home);
+            base.away = getDisplayTeamName(base.away);
             base.group = base.group || '';
             base.phase = base.phase || (base.group ? 'Group Stage' : 'Knockout Stage');
             const staticMatch = staticLookup.get(getMatchPairKey(base.home, base.away));
@@ -808,8 +812,8 @@ function renderBracket() {
             .sort((a, b) => (a.utcDate || a.date).localeCompare(b.utcDate || b.date))
             .map((match, index) => ({
                 label: match.label || `${round.name} ${index + 1}`,
-                team1: match.home,
-                team2: match.away,
+                team1: getDisplayTeamName(match.home),
+                team2: getDisplayTeamName(match.away),
                 date: formatDate(match.date),
                 venue: match.city && match.city !== 'TBD'
                     ? `${match.venue} · ${match.city}`
